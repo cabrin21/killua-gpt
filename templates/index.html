@@ -1,9 +1,110 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>KILLUA AI</title>
+<title>KILLUA AI</title>
+<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <h1>KILLUA AI is running ⚡</h1>
+
+<div class="chatbox">
+
+<input id="user" placeholder="Nom">
+
+<div id="msgs"></div>
+
+<input id="input" placeholder="Message...">
+<button onclick="send()">Chat</button>
+<button onclick="genImage()">Image</button>
+<button onclick="speak()">Voice</button>
+
+<input type="file" id="pdf">
+<button onclick="sendPDF()">PDF</button>
+
+<input type="file" id="img">
+<button onclick="sendImage()">Vision</button>
+
+<button onclick="reset()">Reset</button>
+
+</div>
+
+<script>
+async function send(){
+let user=document.getElementById("user").value
+let msg=document.getElementById("input").value
+
+let res=await fetch("/stream",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({user:user,message:msg})
+})
+
+let reader=res.body.getReader()
+let decoder=new TextDecoder()
+let ai=""
+
+while(true){
+let {done,value}=await reader.read()
+if(done)break
+ai+=decoder.decode(value)
+show(ai)
+}
+}
+
+function show(text){
+document.getElementById("msgs").innerText=text
+}
+
+async function genImage(){
+let prompt=document.getElementById("input").value
+let r=await fetch("/image",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({prompt})
+})
+let d=await r.json()
+document.getElementById("msgs").innerHTML+="<img src='"+d.url+"' width=200>"
+}
+
+async function speak(){
+let text=document.getElementById("msgs").innerText
+let r=await fetch("/voice",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({text})
+})
+let blob=await r.blob()
+let audio=new Audio(URL.createObjectURL(blob))
+audio.play()
+}
+
+async function sendPDF(){
+let file=document.getElementById("pdf").files[0]
+let form=new FormData()
+form.append("file",file)
+let r=await fetch("/pdf",{method:"POST",body:form})
+let d=await r.json()
+show(d.analysis)
+}
+
+async function sendImage(){
+let file=document.getElementById("img").files[0]
+let form=new FormData()
+form.append("image",file)
+let r=await fetch("/vision",{method:"POST",body:form})
+let d=await r.json()
+show(d.result)
+}
+
+async function reset(){
+let user=document.getElementById("user").value
+await fetch("/reset",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({user})
+})
+document.getElementById("msgs").innerHTML=""
+}
+</script>
+
 </body>
 </html>
