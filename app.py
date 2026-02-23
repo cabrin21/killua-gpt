@@ -1,32 +1,19 @@
-from flask import Flask, request, jsonify, render_template
-from openai import OpenAI
-import os
+import fitz
+@app.route("/pdf", methods=["POST"])
+def read_pdf():
+    file = request.files["file"]
+    doc = fitz.open(stream=file.read(), filetype="pdf")
 
-app = Flask(__name__)
-
-client = OpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY")
-)
-
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.get_json()
-    user_message = data.get("message")
+    text = ""
+    for page in doc:
+        text += page.get_text()
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "Tu es KILLUA AI, un assistant intelligent et amical qui parle français simplement."},
-            {"role": "user", "content": user_message}
+            {"role":"system","content":"Analyse ce document"},
+            {"role":"user","content":text[:15000]}
         ]
     )
 
-    reply = response.choices[0].message.content
-    return jsonify({"reply": reply})
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    return jsonify({"analysis":response.choices[0].message.content})
